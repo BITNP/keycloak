@@ -17,6 +17,7 @@
 
 package org.keycloak.testsuite.federation.ldap;
 
+import org.jboss.logging.Logger;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.FixMethodOrder;
@@ -55,6 +56,8 @@ import static org.keycloak.testsuite.util.LDAPTestUtils.getGroupDescriptionLDAPA
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class LDAPGroupMapperTest extends AbstractLDAPTest {
+
+    private static Logger logger = Logger.getLogger(LDAPGroupMapperTest.class);
 
     @ClassRule
     public static LDAPRule ldapRule = new LDAPRule();
@@ -417,6 +420,17 @@ public class LDAPGroupMapperTest extends AbstractLDAPTest {
             long dbGroupCount = rob.getGroupsCount();
             Assert.assertEquals(4, dbGroupCount);
 
+            // Check getGroupMembers
+            List<UserModel> group1Members = session.users().getGroupMembers(appRealm, group1, 0, 10);
+            List<UserModel> group11Members = session.users().getGroupMembers(appRealm, group11, 0, 10);
+            List<UserModel> group12Members = session.users().getGroupMembers(appRealm, group12, 0, 10);
+
+            Assert.assertEquals(0, group1Members.size());
+            Assert.assertEquals(1, group11Members.size());
+            Assert.assertEquals("robkeycloak", group11Members.get(0).getUsername());
+            Assert.assertEquals(1, group12Members.size());
+            Assert.assertEquals("robkeycloak", group12Members.get(0).getUsername());
+
             // Delete some group mappings in LDAP and check that it doesn't have any effect and user still has groups
             LDAPObject ldapGroup = groupMapper.loadLDAPGroupByName("group11");
             groupMapper.deleteGroupMappingInLDAP(robLdap, ldapGroup);
@@ -427,6 +441,22 @@ public class LDAPGroupMapperTest extends AbstractLDAPTest {
             robGroups = rob.getGroups();
             Assert.assertTrue(robGroups.contains(group11));
             Assert.assertTrue(robGroups.contains(group12));
+
+            // Check getGroupMembers
+            group1Members = session.users().getGroupMembers(appRealm, group1, 0, 10);
+            group11Members = session.users().getGroupMembers(appRealm, group11, 0, 10);
+            group12Members = session.users().getGroupMembers(appRealm, group12, 0, 10);
+
+            if(group11Members.size() > 0) logger.warnf("1[0]:%s", group11Members.get(0).getId());
+            if(group11Members.size() > 1) logger.warnf("1[1]:%s", group11Members.get(1).getId());
+            if(group12Members.size() > 0) logger.warnf("2[0]:%s", group12Members.get(0).getId());
+            if(group12Members.size() > 1) logger.warnf("2[1]:%s", group12Members.get(1).getId());
+
+            Assert.assertEquals(0, group1Members.size());
+            Assert.assertEquals(1, group11Members.size());
+            Assert.assertEquals("robkeycloak", group11Members.get(0).getUsername());
+            Assert.assertEquals(1, group12Members.size());
+            Assert.assertEquals("robkeycloak", group12Members.get(0).getUsername());
 
             // Delete group mappings through model and verifies that user doesn't have them anymore
             rob.leaveGroup(group11);
